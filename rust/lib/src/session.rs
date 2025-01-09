@@ -76,6 +76,17 @@ impl Session {
         }
     }
 
+    pub async fn extract_features_async(&self, file: impl AsyncInputApi) -> Result<Features> {
+        match FeaturesOrRuled::extract(file).await? {
+            FeaturesOrRuled::Features(features) => Ok(features),
+            _ => panic!("not interested for this test"),
+        }
+    }
+
+    pub fn extract_features(&self, file: impl AsyncInputApi) -> Result<Features> {
+        exec(self.extract_features_async(file))
+    }
+
     /// Identifies a single file from its features (synchronously).
     pub fn identify_features_sync(&self, features: &Features) -> Result<FileType> {
         exec(self.identify_features::<SyncEnv>(features))
@@ -119,5 +130,24 @@ impl Session {
         let output = output.remove("target_label").unwrap();
         let output = output.try_extract_tensor()?;
         Ok(FileType::convert(output))
+    }
+
+    pub fn features(&self, features: &[Features]) -> Array2<i32> {
+        let features_size = crate::model::CONFIG.features_size();
+        let features_size = crate::model::CONFIG.features_size();
+        let input = Array2::from_shape_vec(
+            [features.len(), features_size],
+            features.iter().flat_map(|x| &x.0).cloned().collect(),
+        )
+        .unwrap();
+        input
+    }
+
+    pub fn run_from_input(&self, input: Array2<i32>) -> Result<FileType> {
+        let mut output = exec(SyncEnv::ort_session_run(&self.session, input))?;
+        let output = output.remove("target_label").unwrap();
+        let output = output.try_extract_tensor()?;
+        let [result] = FileType::convert(output).try_into().ok().unwrap();
+        Ok(result)
     }
 }

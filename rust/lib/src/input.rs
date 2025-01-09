@@ -170,11 +170,13 @@ async fn extract_features_async(
     copy_features(split_features.mid, &mid, 1);
     copy_features(split_features.end, end, 2);
     for (offset, features) in split_features.off {
-        let mut buffer = Vec::new();
-        if offset + features.len() <= file_len {
-            buffer = vec![0; features.len()];
+        let buffer = if offset + features.len() <= file_len {
+            let mut buffer = vec![0; features.len()];
             file.read_at(&mut buffer, offset).await?;
-        }
+            buffer
+        } else {
+            Vec::new()
+        };
         copy_features(features, &buffer, 0);
     }
     Ok((content_beg, features))
@@ -185,9 +187,7 @@ fn copy_features(dst: &mut [i32], src: &[u8], align: usize) {
     let dst_len = dst.len(); // borrowing issue: cannot inline below
     let dst = &mut dst[(dst_len - len) * align / 2..][..len];
     let src = &src[(src.len() - len) * align / 2..][..len];
-    for (dst, src) in dst.iter_mut().zip(src.iter()) {
-        *dst = *src as i32;
-    }
+    dst.copy_from_slice(&src.iter().map(|&x| x as i32).collect::<Vec<i32>>());
 }
 
 fn strip_prefix(xs: &[u8]) -> &[u8] {
