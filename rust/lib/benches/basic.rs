@@ -16,11 +16,8 @@ fn build_session_with_core_ml(thread: usize) -> Result<Session> {
     Ok(magika.build()?)
 }
 
-fn identify(session: &mut Session, bytes: &[u8]) -> Result<&'static str, bool> {
-    match session.identify_content_sync(bytes) {
-        Ok(_) => Ok("worked"),
-        Err(_) => Err(false),
-    }
+fn identify(session: &mut Session, bytes: &[u8])  {
+    session.identify_content_sync(bytes).unwrap();
 }
 
 pub fn bench_core_ml(c: &mut Criterion) {
